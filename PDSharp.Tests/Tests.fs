@@ -16,6 +16,7 @@ let ``Can instantiate AppConfig`` () =
   let config = {
     PublicUrl = "https://example.com"
     DidHost = "did:web:example.com"
+    JwtSecret = "test-secret-key-for-testing-only"
   }
 
   Assert.Equal("did:web:example.com", config.DidHost)

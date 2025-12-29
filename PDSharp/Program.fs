@@ -17,6 +17,7 @@ open PDSharp.Core.Repository
 open PDSharp.Core.Mst
 open PDSharp.Core.Crypto
 open PDSharp.Core.Firehose
+open PDSharp.Core.Auth
 
 module App =
   /// Repo state per DID: MST root, collections, current rev, head commit CID
@@ -98,7 +99,7 @@ module App =
     let signed = signCommit key unsigned
     let commitBytes = serializeCommit signed
     let! commitCid = (blockStore :> IBlockStore).Put(commitBytes)
-    return (signed, commitCid)
+    return signed, commitCid
   }
 
   [<CLIMutable>]
@@ -133,6 +134,219 @@ module App =
       }
 
       json response next ctx
+
+  [<CLIMutable>]
+  type CreateAccountRequest = {
+    handle : string
+    email : string option
+    password : string
+    inviteCode : string option
+  }
+
+  [<CLIMutable>]
+  type CreateSessionRequest = {
+    /// Handle or email
+    identifier : string
+    password : string
+  }
+
+  type SessionResponse = {
+    accessJwt : string
+    refreshJwt : string
+    handle : string
+    did : string
+    email : string option
+  }
+
+  /// POST /xrpc/com.atproto.server.createAccount
+  let createAccountHandler : HttpHandler =
+    fun next ctx -> task {
+      let config = ctx.GetService<AppConfig>()
+      let! body = ctx.ReadBodyFromRequestAsync()
+
+      let request =
+        JsonSerializer.Deserialize<CreateAccountRequest>(
+          body,
+          JsonSerializerOptions(PropertyNameCaseInsensitive = true)
+        )
+
+      if
+        String.IsNullOrWhiteSpace(request.handle)
+        || String.IsNullOrWhiteSpace(request.password)
+      then
+        ctx.SetStatusCode 400
+
+        return!
+          json
+            {
+              error = "InvalidRequest"
+              message = "handle and password are required"
+            }
+            next
+            ctx
+      else
+        match createAccount request.handle request.password request.email with
+        | Error msg ->
+          ctx.SetStatusCode 400
+          return! json { error = "AccountExists"; message = msg } next ctx
+        | Ok account ->
+          let accessJwt = createAccessToken config.JwtSecret account.Did
+          let refreshJwt = createRefreshToken config.JwtSecret account.Did
+
+          ctx.SetStatusCode 200
+
+          return!
+            json
+              {
+                accessJwt = accessJwt
+                refreshJwt = refreshJwt
+                handle = account.Handle
+                did = account.Did
+                email = account.Email
+              }
+              next
+              ctx
+    }
+
+  /// POST /xrpc/com.atproto.server.createSession
+  let createSessionHandler : HttpHandler =
+    fun next ctx -> task {
+      let config = ctx.GetService<AppConfig>()
+      let! body = ctx.ReadBodyFromRequestAsync()
+
+      let request =
+        JsonSerializer.Deserialize<CreateSessionRequest>(
+          body,
+          JsonSerializerOptions(PropertyNameCaseInsensitive = true)
+        )
+
+      if
+        String.IsNullOrWhiteSpace(request.identifier)
+        || String.IsNullOrWhiteSpace(request.password)
+      then
+        ctx.SetStatusCode 400
+
+        return!
+          json
+            {
+              error = "InvalidRequest"
+              message = "identifier and password are required"
+            }
+            next
+            ctx
+      else
+        match getAccountByHandle request.identifier with
+        | None ->
+          ctx.SetStatusCode 401
+
+          return!
+            json
+              {
+                error = "AuthenticationRequired"
+                message = "Invalid identifier or password"
+              }
+              next
+              ctx
+        | Some account ->
+          if not (verifyPassword request.password account.PasswordHash) then
+            ctx.SetStatusCode 401
+
+            return!
+              json
+                {
+                  error = "AuthenticationRequired"
+                  message = "Invalid identifier or password"
+                }
+                next
+                ctx
+          else
+            let accessJwt = createAccessToken config.JwtSecret account.Did
+            let refreshJwt = createRefreshToken config.JwtSecret account.Did
+
+            ctx.SetStatusCode 200
+
+            return!
+              json
+                {
+                  accessJwt = accessJwt
+                  refreshJwt = refreshJwt
+                  handle = account.Handle
+                  did = account.Did
+                  email = account.Email
+                }
+                next
+                ctx
+    }
+
+  /// Extract Bearer token from Authorization header
+  let private extractBearerToken (ctx : HttpContext) : string option =
+    match ctx.Request.Headers.TryGetValue("Authorization") with
+    | true, values ->
+      let header = values.ToString()
+
+      if header.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) then
+        Some(header.Substring(7))
+      else
+        None
+    | _ -> None
+
+  /// POST /xrpc/com.atproto.server.refreshSession
+  let refreshSessionHandler : HttpHandler =
+    fun next ctx -> task {
+      let config = ctx.GetService<AppConfig>()
+
+      match extractBearerToken ctx with
+      | None ->
+        ctx.SetStatusCode 401
+
+        return!
+          json
+            {
+              error = "AuthenticationRequired"
+              message = "Missing or invalid Authorization header"
+            }
+            next
+            ctx
+      | Some token ->
+        match validateToken config.JwtSecret token with
+        | Invalid reason ->
+          ctx.SetStatusCode 401
+          return! json { error = "ExpiredToken"; message = reason } next ctx
+        | Valid(did, tokenType, _) ->
+          if tokenType <> Refresh then
+            ctx.SetStatusCode 400
+
+            return!
+              json
+                {
+                  error = "InvalidRequest"
+                  message = "Refresh token required"
+                }
+                next
+                ctx
+          else
+            match getAccountByDid did with
+            | None ->
+              ctx.SetStatusCode 401
+              return! json { error = "AccountNotFound"; message = "Account not found" } next ctx
+            | Some account ->
+              let accessJwt = createAccessToken config.JwtSecret account.Did
+              let refreshJwt = createRefreshToken config.JwtSecret account.Did
+
+              ctx.SetStatusCode 200
+
+              return!
+                json
+                  {
+                    accessJwt = accessJwt
+                    refreshJwt = refreshJwt
+                    handle = account.Handle
+                    did = account.Did
+                    email = account.Email
+                  }
+                  next
+                  ctx
+    }
 
   let createRecordHandler : HttpHandler =
     fun next ctx -> task {
@@ -584,6 +798,11 @@ module App =
       GET
       >=> route "/xrpc/com.atproto.server.describeServer"
       >=> describeServerHandler
+      POST >=> route "/xrpc/com.atproto.server.createAccount" >=> createAccountHandler
+      POST >=> route "/xrpc/com.atproto.server.createSession" >=> createSessionHandler
+      POST
+      >=> route "/xrpc/com.atproto.server.refreshSession"
+      >=> refreshSessionHandler
       POST >=> route "/xrpc/com.atproto.repo.createRecord" >=> createRecordHandler
       GET >=> route "/xrpc/com.atproto.repo.getRecord" >=> getRecordHandler
       POST >=> route "/xrpc/com.atproto.repo.putRecord" >=> putRecordHandler

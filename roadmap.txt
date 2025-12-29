@@ -49,8 +49,8 @@ DoD: Relay/client receives commit events after writes
 --------------------------------------------------------------------------------
 Milestone H: Account + Sessions
 --------------------------------------------------------------------------------
-- Implement: server.createAccount, server.createSession, refreshSession
-- Password/app-password hashing + JWT issuance
+- [x] Implement: server.createAccount, server.createSession, refreshSession
+- [x] Password/app-password hashing + JWT issuance
 DoD: Authenticate and write records with accessJwt
 --------------------------------------------------------------------------------
 Milestone I: Lexicon Validation + Conformance
@@ -58,6 +58,29 @@ Milestone I: Lexicon Validation + Conformance
 - Lexicon validation for writes (app.bsky.* records)
 - Conformance testing: diff CIDs/CARs/signatures vs reference PDS
 DoD: Same inputs → same outputs for repo/sync surfaces
+--------------------------------------------------------------------------------
+Milestone J: Persistence + Backups (Self-hosted PDS)
+--------------------------------------------------------------------------------
+Deliverables:
+  - BackupOps module in Core (scheduler unit / cron / scripts, plus Litestream config)
+Backups (SQLite)
+    [ ] Set PDS_SQLITE_DISABLE_WAL_AUTO_CHECKPOINT=true (Litestream-friendly)
+    [ ] Run a scheduled backup/replication job that:
+        - finds recently updated DBs
+        - backs up /pds/actors/* and PDS-wide DBs
+        - runs on SIGTERM during deploys (avoid missing last writes)
+Backups (Blobs)
+    [ ] Configurable Options (app settings):
+        (A) Disk blobs: include /pds/blocks in backups
+        (B) S3-compatible blobstore: rely on object-store durability
+Guardrails
+    [ ] Uptime check: https://<pds>/xrpc/_health
+    [ ] Alert if “latest backup” is older than N minutes.
+    [ ] Alert on disk pressure for /pds.
+DoD:
+  - You can restore onto a fresh host and pass the P3 verification checklist.
+  - Backups run automatically and are observable (“last successful backup”).
+  - Backup set is explicitly documented (DBs + blobs decision).
 ================================================================================
 PHASE 2: DEPLOYMENT (Self-Host)
 ================================================================================
@@ -121,7 +144,7 @@ QUICK CHECKLIST
 [x] putRecord + blockstore operational
 [x] CAR export + sync endpoints
 [x] subscribeRepos firehose
-[ ] Authentication (createAccount, createSession)
+[x] Authentication (createAccount, createSession)
 [ ] Lexicon validation
 [ ] Domain + TLS configured
 [ ] PDS deployed and reachable
