@@ -1,5 +1,4 @@
 ﻿open System
-open System.IO
 open System.Text
 open System.Text.Json
 open Microsoft.AspNetCore.Builder
@@ -355,62 +354,67 @@ module App =
       let request =
         JsonSerializer.Deserialize<CreateRecordRequest>(body, JsonSerializerOptions(PropertyNameCaseInsensitive = true))
 
-      let did = request.repo
+      match Lexicon.validate request.collection request.record with
+      | Lexicon.Error msg ->
+        ctx.SetStatusCode 400
+        return! json { error = "InvalidRequest"; message = msg } next ctx
+      | Lexicon.Ok ->
+        let did = request.repo
 
-      let rkey =
-        match request.rkey with
-        | Some r when not (String.IsNullOrWhiteSpace(r)) -> r
-        | _ -> Tid.generate ()
+        let rkey =
+          match request.rkey with
+          | Some r when not (String.IsNullOrWhiteSpace(r)) -> r
+          | _ -> Tid.generate ()
 
-      let recordJson = request.record.GetRawText()
-      let recordBytes = Encoding.UTF8.GetBytes(recordJson)
-      let! recordCid = (blockStore :> IBlockStore).Put(recordBytes)
+        let recordJson = request.record.GetRawText()
+        let recordBytes = Encoding.UTF8.GetBytes(recordJson)
+        let! recordCid = (blockStore :> IBlockStore).Put(recordBytes)
 
-      let repoData = Map.tryFind did repos |> Option.defaultValue emptyRepo
-      let mstKey = $"{request.collection}/{rkey}"
+        let repoData = Map.tryFind did repos |> Option.defaultValue emptyRepo
+        let mstKey = $"{request.collection}/{rkey}"
 
-      let! newMstRoot = Mst.put loader persister repoData.MstRoot mstKey recordCid ""
-      let! mstRootCid = persister newMstRoot
+        let! newMstRoot = Mst.put loader persister repoData.MstRoot mstKey recordCid ""
+        let! mstRootCid = persister newMstRoot
 
-      let newRev = Tid.generate ()
-      let! (_, commitCid) = signAndStoreCommit did mstRootCid newRev repoData.Head
+        let newRev = Tid.generate ()
+        let! (_, commitCid) = signAndStoreCommit did mstRootCid newRev repoData.Head
 
-      let collectionMap =
-        Map.tryFind request.collection repoData.Collections
-        |> Option.defaultValue Map.empty
+        let collectionMap =
+          Map.tryFind request.collection repoData.Collections
+          |> Option.defaultValue Map.empty
 
-      let newCollectionMap = Map.add rkey recordCid collectionMap
+        let newCollectionMap = Map.add rkey recordCid collectionMap
 
-      let newCollections =
-        Map.add request.collection newCollectionMap repoData.Collections
+        let newCollections =
+          Map.add request.collection newCollectionMap repoData.Collections
 
-      let updatedRepo = {
-        MstRoot = newMstRoot
-        Collections = newCollections
-        Rev = newRev
-        Head = Some commitCid
-        Prev = repoData.Head
-      }
+        let updatedRepo = {
+          MstRoot = newMstRoot
+          Collections = newCollections
+          Rev = newRev
+          Head = Some commitCid
+          Prev = repoData.Head
+        }
 
-      repos <- Map.add did updatedRepo repos
+        repos <- Map.add did updatedRepo repos
 
-      let! allBlocks = (blockStore :> IBlockStore).GetAllCidsAndData()
-      let carBytes = Car.createCar [ commitCid ] allBlocks
-      let event = createCommitEvent did newRev commitCid carBytes
-      broadcastEvent event
+        let! allBlocks = (blockStore :> IBlockStore).GetAllCidsAndData()
+        let carBytes = Car.createCar [ commitCid ] allBlocks
+        let event = createCommitEvent did newRev commitCid carBytes
+        broadcastEvent event
 
-      let uri = $"at://{did}/{request.collection}/{rkey}"
-      ctx.SetStatusCode 200
+        let uri = $"at://{did}/{request.collection}/{rkey}"
+        ctx.SetStatusCode 200
 
-      return!
-        json
-          {|
-            uri = uri
-            cid = recordCid.ToString()
-            commit = {| rev = newRev; cid = commitCid.ToString() |}
-          |}
-          next
-          ctx
+        return!
+          json
+            {|
+              uri = uri
+              cid = recordCid.ToString()
+              commit = {| rev = newRev; cid = commitCid.ToString() |}
+            |}
+            next
+            ctx
     }
 
   let getRecordHandler : HttpHandler =
@@ -512,68 +516,73 @@ module App =
       let request =
         JsonSerializer.Deserialize<CreateRecordRequest>(body, JsonSerializerOptions(PropertyNameCaseInsensitive = true))
 
-      match request.rkey with
-      | Some r when not (String.IsNullOrWhiteSpace r) ->
-        let did = request.repo
-        let recordJson = request.record.GetRawText()
-        let recordBytes = Encoding.UTF8.GetBytes(recordJson)
-        let! recordCid = (blockStore :> IBlockStore).Put(recordBytes)
-
-        let repoData = Map.tryFind did repos |> Option.defaultValue emptyRepo
-        let mstKey = $"{request.collection}/{r}"
-
-        let! newMstRoot = Mst.put loader persister repoData.MstRoot mstKey recordCid ""
-        let! mstRootCid = persister newMstRoot
-
-        let newRev = Tid.generate ()
-        let! (_, commitCid) = signAndStoreCommit did mstRootCid newRev repoData.Head
-
-        let collectionMap =
-          Map.tryFind request.collection repoData.Collections
-          |> Option.defaultValue Map.empty
-
-        let newCollectionMap = Map.add r recordCid collectionMap
-
-        let newCollections =
-          Map.add request.collection newCollectionMap repoData.Collections
-
-        let updatedRepo = {
-          MstRoot = newMstRoot
-          Collections = newCollections
-          Rev = newRev
-          Head = Some commitCid
-          Prev = repoData.Head
-        }
-
-        repos <- Map.add did updatedRepo repos
-
-        let! allBlocks = (blockStore :> IBlockStore).GetAllCidsAndData()
-        let carBytes = Car.createCar [ commitCid ] allBlocks
-        let event = createCommitEvent did newRev commitCid carBytes
-        broadcastEvent event
-
-        ctx.SetStatusCode 200
-
-        return!
-          json
-            {|
-              uri = $"at://{did}/{request.collection}/{r}"
-              cid = recordCid.ToString()
-              commit = {| rev = newRev; cid = commitCid.ToString() |}
-            |}
-            next
-            ctx
-      | _ ->
+      match Lexicon.validate request.collection request.record with
+      | Lexicon.Error msg ->
         ctx.SetStatusCode 400
+        return! json { error = "InvalidRequest"; message = msg } next ctx
+      | Lexicon.Ok ->
+        match request.rkey with
+        | Some r when not (String.IsNullOrWhiteSpace r) ->
+          let did = request.repo
+          let recordJson = request.record.GetRawText()
+          let recordBytes = Encoding.UTF8.GetBytes(recordJson)
+          let! recordCid = (blockStore :> IBlockStore).Put(recordBytes)
 
-        return!
-          json
-            {
-              error = "InvalidRequest"
-              message = "rkey is required for putRecord"
-            }
-            next
-            ctx
+          let repoData = Map.tryFind did repos |> Option.defaultValue emptyRepo
+          let mstKey = $"{request.collection}/{r}"
+
+          let! newMstRoot = Mst.put loader persister repoData.MstRoot mstKey recordCid ""
+          let! mstRootCid = persister newMstRoot
+
+          let newRev = Tid.generate ()
+          let! (_, commitCid) = signAndStoreCommit did mstRootCid newRev repoData.Head
+
+          let collectionMap =
+            Map.tryFind request.collection repoData.Collections
+            |> Option.defaultValue Map.empty
+
+          let newCollectionMap = Map.add r recordCid collectionMap
+
+          let newCollections =
+            Map.add request.collection newCollectionMap repoData.Collections
+
+          let updatedRepo = {
+            MstRoot = newMstRoot
+            Collections = newCollections
+            Rev = newRev
+            Head = Some commitCid
+            Prev = repoData.Head
+          }
+
+          repos <- Map.add did updatedRepo repos
+
+          let! allBlocks = (blockStore :> IBlockStore).GetAllCidsAndData()
+          let carBytes = Car.createCar [ commitCid ] allBlocks
+          let event = createCommitEvent did newRev commitCid carBytes
+          broadcastEvent event
+
+          ctx.SetStatusCode 200
+
+          return!
+            json
+              {|
+                uri = $"at://{did}/{request.collection}/{r}"
+                cid = recordCid.ToString()
+                commit = {| rev = newRev; cid = commitCid.ToString() |}
+              |}
+              next
+              ctx
+        | _ ->
+          ctx.SetStatusCode 400
+
+          return!
+            json
+              {
+                error = "InvalidRequest"
+                message = "rkey is required for putRecord"
+              }
+              next
+              ctx
     }
 
   /// sync.getRepo: Export entire repository as CAR file
@@ -793,11 +802,50 @@ module App =
             ctx
     }
 
+  let indexHandler : HttpHandler =
+    fun next ctx ->
+      let html =
+        """<html>
+      <head><title>PDSharp</title></head>
+      <body>
+        <pre>
+         888                             888                         8888888888   888  888
+         888                             888                         888          888  888
+         888                             888                         888        888888888888
+ 8888b.  888888 88888b.  888d888 .d88b.  888888 .d88b.       88      8888888      888  888
+    "88b 888    888 "88b 888P"  d88""88b 888   d88""88b    888888    888          888  888
+.d888888 888    888  888 888    888  888 888   888  888      88      888        888888888888
+888  888 Y88b.  888 d88P 888    Y88..88P Y88b. Y88..88P              888          888  888
+"Y888888  "Y888 88888P"  888     "Y88P"   "Y888 "Y88P"               888          888  888
+                888
+                888
+                888
+
+
+This is an AT Protocol Personal Data Server (aka, an atproto PDS)
+
+Most API routes are under /xrpc/
+
+      Code: https://github.com/bluesky-social/atproto
+            https://github.com/stormlightlabs/PDSharp
+            https://tangled.org/desertthunder.dev/PDSharp
+ Self-Host: https://github.com/bluesky-social/pds
+  Protocol: https://atproto.com
+        </pre>
+      </body>
+    </html>"""
+
+      ctx.SetContentType "text/html"
+      ctx.SetStatusCode 200
+      ctx.WriteStringAsync html
+
   let webApp =
     choose [
       GET
-      >=> route "/xrpc/com.atproto.server.describeServer"
-      >=> describeServerHandler
+      >=> choose [
+        route "/" >=> indexHandler
+        route "/xrpc/com.atproto.server.describeServer" >=> describeServerHandler
+      ]
       POST >=> route "/xrpc/com.atproto.server.createAccount" >=> createAccountHandler
       POST >=> route "/xrpc/com.atproto.server.createSession" >=> createSessionHandler
       POST

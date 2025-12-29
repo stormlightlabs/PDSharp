@@ -17,6 +17,7 @@
         <Compile Include="Auth.fs" />
         <Compile Include="Firehose.fs" />
         <Compile Include="DidResolver.fs" />
+        <Compile Include="Lexicon.fs" />
         <Compile Include="Library.fs" />
     </ItemGroup>
 

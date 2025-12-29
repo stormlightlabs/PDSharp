@@ -55,11 +55,11 @@ DoD: Authenticate and write records with accessJwt
 --------------------------------------------------------------------------------
 Milestone I: Lexicon Validation + Conformance
 --------------------------------------------------------------------------------
-- Lexicon validation for writes (app.bsky.* records)
-- Conformance testing: diff CIDs/CARs/signatures vs reference PDS
+- [x] Lexicon validation for writes (app.bsky.* records)
+- [x] Conformance testing: diff CIDs/CARs/signatures vs reference PDS
 DoD: Same inputs → same outputs for repo/sync surfaces
 --------------------------------------------------------------------------------
-Milestone J: Persistence + Backups (Self-hosted PDS)
+Milestone J: Persistence + Backups
 --------------------------------------------------------------------------------
 Deliverables:
   - BackupOps module in Core (scheduler unit / cron / scripts, plus Litestream config)
@@ -114,7 +114,7 @@ Milestone N: Smoke Test Repo + Blobs
 - Upload blob, verify retrieval via sync.getBlob
 DoD: Posts appear in clients, media loads reliably
 --------------------------------------------------------------------------------
-Milestone O: Account Migration (Optional)
+Milestone O: Account Migration
 --------------------------------------------------------------------------------
 - Export/import from bsky.social
 - Update DID service endpoint
