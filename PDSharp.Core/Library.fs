@@ -1,5 +1,9 @@
 ﻿namespace PDSharp.Core
 
-module Say =
-    let hello name =
-        printfn "Hello %s" name
+module Models =
+  [<CLIMutable>]
+  type DescribeServerResponse = {
+    availableUserDomains : string list
+    did : string
+    inviteCodeRequired : bool
+  }
