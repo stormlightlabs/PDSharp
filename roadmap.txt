@@ -1,0 +1,142 @@
+================================================================================
+*roadmap.txt*                    PDSharp: F#/Giraffe PDS Implementation Roadmap
+================================================================================
+PHASE 1: IMPLEMENTATION (Build)
+================================================================================
+Milestone A: Giraffe XRPC Shell
+--------------------------------------------------------------------------------
+- [x] Implement /xrpc/com.atproto.server.describeServer (GET)
+- [x] Implement NSID-based routing with structured error responses
+DoD: describeServer responds with stable JSON
+--------------------------------------------------------------------------------
+Milestone B: Identity + Crypto Primitives
+--------------------------------------------------------------------------------
+- DID document fetch/parse for signing key and PDS endpoint
+- SHA-256 hashing, ECDSA sign/verify (p256 + k256), low-S enforcement
+DoD: Sign and verify atproto commit hash with low-S
+--------------------------------------------------------------------------------
+Milestone C: DAG-CBOR + CID
+--------------------------------------------------------------------------------
+- Canonical DAG-CBOR encode/decode with IPLD link tagging
+- CID creation/parsing (multicodec dag-cbor, sha2-256)
+DoD: Record JSON → stable DAG-CBOR bytes → deterministic CID
+--------------------------------------------------------------------------------
+Milestone D: MST Implementation
+--------------------------------------------------------------------------------
+- Merkle Search Tree per repository spec
+- Key depth = leading zero bits in SHA-256(key) counted in 2-bit chunks
+- Node encoding: (l, e[p,k,v,t]) with key prefix compression
+DoD: Insert/update/delete yields reproducible root CID
+--------------------------------------------------------------------------------
+Milestone E: Commit + BlockStore + putRecord
+--------------------------------------------------------------------------------
+- BlockStore: cid → bytes, indexed by DID/rev/head
+- Commit signing: UnsignedCommit → DAG-CBOR → sha256 → ECDSA sign
+- Implement com.atproto.repo.putRecord/createRecord
+DoD: Write and read records by path/AT-URI
+--------------------------------------------------------------------------------
+Milestone F: CAR Export + Sync Endpoints
+--------------------------------------------------------------------------------
+- CARv1 writer (roots = commit CID, blocks stream)
+- Implement: sync.getRepo, sync.getBlocks, sync.getBlob
+DoD: External services can fetch repo snapshot + blocks
+--------------------------------------------------------------------------------
+Milestone G: subscribeRepos Firehose
+--------------------------------------------------------------------------------
+- Monotonic sequence number + commit event generation
+- WebSocket streaming for subscribeRepos
+DoD: Relay/client receives commit events after writes
+--------------------------------------------------------------------------------
+Milestone H: Account + Sessions
+--------------------------------------------------------------------------------
+- Implement: server.createAccount, server.createSession, refreshSession
+- Password/app-password hashing + JWT issuance
+DoD: Authenticate and write records with accessJwt
+--------------------------------------------------------------------------------
+Milestone I: Lexicon Validation + Conformance
+--------------------------------------------------------------------------------
+- Lexicon validation for writes (app.bsky.* records)
+- Conformance testing: diff CIDs/CARs/signatures vs reference PDS
+DoD: Same inputs → same outputs for repo/sync surfaces
+================================================================================
+PHASE 2: DEPLOYMENT (Self-Host)
+================================================================================
+Milestone J: Topology + Domain Planning
+--------------------------------------------------------------------------------
+- Choose PDS hostname (pds.example.com) vs handle domain (example.com)
+- Obtain domain, DNS access, VPS with static IP, reverse proxy
+DoD: Clear plan for PDS location, handle, and DID resolution
+--------------------------------------------------------------------------------
+Milestone K: DNS + TLS + Reverse Proxy
+--------------------------------------------------------------------------------
+- DNS A/AAAA records for PDS hostname
+- TLS certs (ACME) via Caddy/Nginx/Traefik
+DoD: https://<pds-hostname> responds with valid cert
+--------------------------------------------------------------------------------
+Milestone L: Deploy PDSharp
+--------------------------------------------------------------------------------
+- Deploy built PDS with persistence (SQLite/Postgres + blob storage)
+- Verify /xrpc/com.atproto.server.describeServer
+DoD: describeServer returns capabilities payload
+--------------------------------------------------------------------------------
+Milestone M: Account Creation
+--------------------------------------------------------------------------------
+- Create account using admin tooling
+- Verify authentication: createSession
+DoD: Obtain session and perform authenticated write
+--------------------------------------------------------------------------------
+Milestone N: Smoke Test Repo + Blobs
+--------------------------------------------------------------------------------
+- Write record via putRecord
+- Upload blob, verify retrieval via sync.getBlob
+DoD: Posts appear in clients, media loads reliably
+--------------------------------------------------------------------------------
+Milestone O: Account Migration (Optional)
+--------------------------------------------------------------------------------
+- Export/import from bsky.social
+- Update DID service endpoint
+- Verify handle/DID resolution
+DoD: Handle unchanged, DID points to your PDS
+--------------------------------------------------------------------------------
+Milestone P: Reliability
+--------------------------------------------------------------------------------
+- Backups: repo storage + database + blobs
+- Restore drill on fresh instance
+- Monitoring: uptime checks for describeServer + getBlob
+DoD: Restore from backup passes smoke tests
+--------------------------------------------------------------------------------
+Milestone Q: Updates + Security
+--------------------------------------------------------------------------------
+- Update cadence with rollback plan
+- Rate limits and access controls at proxy
+- Log retention and disk growth alerts
+DoD: Update smoothly, maintain stable federation
+================================================================================
+QUICK CHECKLIST
+================================================================================
+[ ] describeServer endpoint working
+[ ] Crypto primitives (sha256, ECDSA p256/k256, low-S)
+[ ] DAG-CBOR + CID generation correct
+[ ] MST producing deterministic root CIDs
+[ ] putRecord + blockstore operational
+[ ] CAR export + sync endpoints
+[ ] subscribeRepos firehose
+[ ] Authentication (createAccount, createSession)
+[ ] Lexicon validation
+[ ] Domain + TLS configured
+[ ] PDS deployed and reachable
+[ ] Account created, session works
+[ ] Writes + blobs verified
+[ ] Backups + monitoring in place
+================================================================================
+REFERENCES
+================================================================================
+https://atproto.com/guides/self-hosting
+https://github.com/bluesky-social/pds
+https://atproto.com/specs/repository
+https://atproto.com/specs/sync
+https://atproto.com/specs/blob
+https://docs.bsky.app/docs/api/com-atproto-server-describe-server
+https://docs.bsky.app/docs/api/com-atproto-server-create-session
+https://docs.bsky.app/docs/api/com-atproto-repo-put-record
+https://docs.bsky.app/docs/api/com-atproto-sync-get-blob
