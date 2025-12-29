@@ -9,6 +9,7 @@
         <Compile Include="Cid.fs" />
         <Compile Include="DagCbor.fs" />
         <Compile Include="Crypto.fs" />
+        <Compile Include="Mst.fs" />
         <Compile Include="DidResolver.fs" />
         <Compile Include="Library.fs" />
     </ItemGroup>

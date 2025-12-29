@@ -23,9 +23,9 @@ DoD: Record JSON → stable DAG-CBOR bytes → deterministic CID
 --------------------------------------------------------------------------------
 Milestone D: MST Implementation
 --------------------------------------------------------------------------------
-- Merkle Search Tree per repository spec
-- Key depth = leading zero bits in SHA-256(key) counted in 2-bit chunks
-- Node encoding: (l, e[p,k,v,t]) with key prefix compression
+- [x] Merkle Search Tree per repository spec
+- [x] Key depth = leading zero bits in SHA-256(key) counted in 2-bit chunks
+- [x] Node encoding: (l, e[p,k,v,t]) with key prefix compression
 DoD: Insert/update/delete yields reproducible root CID
 --------------------------------------------------------------------------------
 Milestone E: Commit + BlockStore + putRecord
@@ -117,7 +117,7 @@ QUICK CHECKLIST
 [ ] describeServer endpoint working
 [ ] Crypto primitives (sha256, ECDSA p256/k256, low-S)
 [ ] DAG-CBOR + CID generation correct
-[ ] MST producing deterministic root CIDs
+[x] MST producing deterministic root CIDs
 [ ] putRecord + blockstore operational
 [ ] CAR export + sync endpoints
 [ ] subscribeRepos firehose
