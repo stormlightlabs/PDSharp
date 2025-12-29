@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "PDSharp", "PDSharp\PDSharp.fsproj", "{FE3C5D60-6A4F-402E-AF13-B37020876850}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "PDSharp.Core", "PDSharp.Core\PDSharp.Core.fsproj", "{FFF8A779-342A-4DC3-92D6-5BB5D5238CB5}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{FE3C5D60-6A4F-402E-AF13-B37020876850}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FE3C5D60-6A4F-402E-AF13-B37020876850}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FE3C5D60-6A4F-402E-AF13-B37020876850}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FE3C5D60-6A4F-402E-AF13-B37020876850}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FFF8A779-342A-4DC3-92D6-5BB5D5238CB5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FFF8A779-342A-4DC3-92D6-5BB5D5238CB5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FFF8A779-342A-4DC3-92D6-5BB5D5238CB5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FFF8A779-342A-4DC3-92D6-5BB5D5238CB5}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
