@@ -17,6 +17,8 @@ let ``Can instantiate AppConfig`` () =
     PublicUrl = "https://example.com"
     DidHost = "did:web:example.com"
     JwtSecret = "test-secret-key-for-testing-only"
+    SqliteConnectionString = "Data Source=:memory:"
+    BlobStore = Disk "blobs"
   }
 
   Assert.Equal("did:web:example.com", config.DidHost)

@@ -2,6 +2,40 @@ module Auth.Tests
 
 open Xunit
 open PDSharp.Core.Auth
+open System
+open System.Collections.Concurrent
+
+/// Mock in-memory store for testing
+type VolatileAccountStore() =
+  let accounts = ConcurrentDictionary<string, Account>()
+  let handles = ConcurrentDictionary<string, string>()
+
+  interface IAccountStore with
+    member _.CreateAccount(account : Account) = async {
+      if handles.ContainsKey(account.Handle) then
+        return Error "Handle already taken"
+      elif accounts.ContainsKey(account.Did) then
+        return Error "Account already exists"
+      else
+        accounts.TryAdd(account.Did, account) |> ignore
+        handles.TryAdd(account.Handle, account.Did) |> ignore
+        return Ok()
+    }
+
+    member _.GetAccountByHandle(handle : string) = async {
+      match handles.TryGetValue(handle) with
+      | true, did ->
+        match accounts.TryGetValue(did) with
+        | true, acc -> return Some acc
+        | _ -> return None
+      | _ -> return None
+    }
+
+    member _.GetAccountByDid(did : string) = async {
+      match accounts.TryGetValue(did) with
+      | true, acc -> return Some acc
+      | _ -> return None
+    }
 
 [<Fact>]
 let ``Password hashing produces salt$hash format`` () =
@@ -66,36 +100,48 @@ let ``JWT validation fails with wrong secret`` () =
 
 [<Fact>]
 let ``Account creation and lookup by handle`` () =
-  resetAccounts ()
+  let store = VolatileAccountStore()
 
-  match createAccount "test.user" "password123" (Some "test@example.com") with
+  match
+    createAccount store "test.user" "password123" (Some "test@example.com")
+    |> Async.RunSynchronously
+  with
   | Error msg -> Assert.Fail msg
   | Ok account ->
     Assert.Equal("test.user", account.Handle)
     Assert.Equal("did:web:test.user", account.Did)
     Assert.Equal(Some "test@example.com", account.Email)
 
-    match getAccountByHandle "test.user" with
+    let found =
+      (store :> IAccountStore).GetAccountByHandle "test.user"
+      |> Async.RunSynchronously
+
+    match found with
     | None -> Assert.Fail "Account should be found"
-    | Some found -> Assert.Equal(account.Did, found.Did)
+    | Some foundAcc -> Assert.Equal(account.Did, foundAcc.Did)
 
 [<Fact>]
 let ``Account creation fails for duplicate handle`` () =
-  resetAccounts ()
+  let store = VolatileAccountStore()
 
-  createAccount "duplicate.user" "password" None |> ignore
+  createAccount store "duplicate.user" "password" None
+  |> Async.RunSynchronously
+  |> ignore
 
-  match createAccount "duplicate.user" "password2" None with
+  match createAccount store "duplicate.user" "password2" None |> Async.RunSynchronously with
   | Error msg -> Assert.Contains("already", msg.ToLower())
   | Ok _ -> Assert.Fail "Should fail for duplicate handle"
 
 [<Fact>]
 let ``Account lookup by DID`` () =
-  resetAccounts ()
+  let store = VolatileAccountStore()
 
-  match createAccount "did.user" "password123" None with
+  match createAccount store "did.user" "password123" None |> Async.RunSynchronously with
   | Error msg -> Assert.Fail msg
   | Ok account ->
-    match getAccountByDid account.Did with
+    let found =
+      (store :> IAccountStore).GetAccountByDid account.Did |> Async.RunSynchronously
+
+    match found with
     | None -> Assert.Fail "Account should be found by DID"
-    | Some found -> Assert.Equal(account.Handle, found.Handle)
+    | Some foundAcc -> Assert.Equal(account.Handle, foundAcc.Handle)

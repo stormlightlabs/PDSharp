@@ -6,7 +6,12 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Compile Include="Program.fs" />
+        <Compile Include="Handlers/Common.fs" />
+    <Compile Include="Handlers/Server.fs" />
+    <Compile Include="Handlers/Auth.fs" />
+    <Compile Include="Handlers/Repo.fs" />
+    <Compile Include="Handlers/Sync.fs" />
+    <Compile Include="Program.fs" />
     </ItemGroup>
 
     <ItemGroup>

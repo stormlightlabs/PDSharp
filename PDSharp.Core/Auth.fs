@@ -177,40 +177,42 @@ module Auth =
     CreatedAt : DateTimeOffset
   }
 
-  let mutable private accounts : Map<string, Account> = Map.empty
-  let mutable private handleIndex : Map<string, string> = Map.empty
+  /// Interface for account persistence
+  type IAccountStore =
+    abstract member CreateAccount : Account -> Async<Result<unit, string>>
+    abstract member GetAccountByHandle : string -> Async<Account option>
+    abstract member GetAccountByDid : string -> Async<Account option>
 
-  let createAccount (handle : string) (password : string) (email : string option) : Result<Account, string> =
-    if Map.containsKey handle handleIndex then
-      Error "Handle already taken"
-    else
-      let did = $"did:web:{handle}"
+  /// Create a new account
+  let createAccount
+    (store : IAccountStore)
+    (handle : string)
+    (password : string)
+    (email : string option)
+    : Async<Result<Account, string>> =
+    async {
+      let! existingHandle = store.GetAccountByHandle handle
 
-      if Map.containsKey did accounts then
-        Error "Account already exists"
-      else
-        let account = {
-          Did = did
-          Handle = handle
-          PasswordHash = hashPassword password
-          Email = email
-          CreatedAt = DateTimeOffset.UtcNow
-        }
+      match existingHandle with
+      | Some _ -> return Error "Handle already taken"
+      | None ->
+        let did = $"did:web:{handle}"
+        let! existingDid = store.GetAccountByDid did
 
-        accounts <- Map.add did account accounts
-        handleIndex <- Map.add handle did handleIndex
-        Ok account
+        match existingDid with
+        | Some _ -> return Error "Account already exists"
+        | None ->
+          let account = {
+            Did = did
+            Handle = handle
+            PasswordHash = hashPassword password
+            Email = email
+            CreatedAt = DateTimeOffset.UtcNow
+          }
 
-  /// Get account by handle
-  let getAccountByHandle (handle : string) : Account option =
-    handleIndex
-    |> Map.tryFind handle
-    |> Option.bind (fun did -> Map.tryFind did accounts)
+          let! result = store.CreateAccount account
 
-  /// Get account by DID
-  let getAccountByDid (did : string) : Account option = Map.tryFind did accounts
-
-  /// Clear all accounts (for testing)
-  let resetAccounts () =
-    accounts <- Map.empty
-    handleIndex <- Map.empty
+          match result with
+          | Ok() -> return Ok account
+          | Error e -> return Error e
+    }

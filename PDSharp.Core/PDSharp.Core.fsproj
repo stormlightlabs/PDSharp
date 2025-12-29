@@ -11,10 +11,12 @@
         <Compile Include="Crypto.fs" />
         <Compile Include="Mst.fs" />
         <Compile Include="BlockStore.fs" />
+        <Compile Include="BlobStore.fs" />
         <Compile Include="Car.fs" />
         <Compile Include="AtUri.fs" />
         <Compile Include="Repository.fs" />
         <Compile Include="Auth.fs" />
+        <Compile Include="SqliteStore.fs" />
         <Compile Include="Firehose.fs" />
         <Compile Include="DidResolver.fs" />
         <Compile Include="Lexicon.fs" />
@@ -22,7 +24,10 @@
     </ItemGroup>
 
     <ItemGroup>
+      <PackageReference Include="AWSSDK.S3" Version="4.0.16" />
       <PackageReference Include="BouncyCastle.Cryptography" Version="2.6.2" />
+      <PackageReference Include="Dapper" Version="2.1.66" />
+      <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.1" />
       <PackageReference Include="System.Formats.Cbor" Version="10.0.1" />
     </ItemGroup>
 </Project>

@@ -15,6 +15,7 @@
     <Compile Include="Firehose.Tests.fs" />
     <Compile Include="Auth.Tests.fs" />
     <Compile Include="Conformance.Tests.fs" />
+    <Compile Include="Handlers.Tests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
