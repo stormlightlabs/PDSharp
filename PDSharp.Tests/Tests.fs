@@ -18,6 +18,7 @@ let ``Can instantiate AppConfig`` () =
     DidHost = "did:web:example.com"
     JwtSecret = "test-secret-key-for-testing-only"
     SqliteConnectionString = "Data Source=:memory:"
+    DisableWalAutoCheckpoint = false
     BlobStore = Disk "blobs"
   }
 
@@ -63,7 +64,6 @@ let ``ECDSA P-256 Sign and Verify`` () =
   let keyPair = generateKey P256
   let data = Encoding.UTF8.GetBytes("test message")
   let hash = sha256 data
-
   let signature = sign keyPair hash
   Assert.True(signature.Length = 64, "Signature should be 64 bytes (R|S)")
 
@@ -75,7 +75,6 @@ let ``ECDSA K-256 Sign and Verify`` () =
   let keyPair = generateKey K256
   let data = Encoding.UTF8.GetBytes("test k256")
   let hash = sha256 data
-
   let signature = sign keyPair hash
   Assert.True(signature.Length = 64, "Signature should be 64 bytes")
 
@@ -117,7 +116,7 @@ let ``DidDocument JSON deserialization`` () =
 [<Fact>]
 let ``CID Generation from Hash`` () =
   let hash =
-    Hex.Decode("b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9")
+    Hex.Decode "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9"
 
   let cid = Cid.FromHash hash
   Assert.Equal<byte>(0x01uy, cid.Bytes.[0])
@@ -127,14 +126,14 @@ let ``CID Generation from Hash`` () =
 
 [<Fact>]
 let ``DAG-CBOR Canonical Sorting`` () =
-  let m = Map.ofList [ ("b", box 1); ("a", box 2) ]
+  let m = Map.ofList [ "b", box 1; "a", box 2 ]
   let encoded = DagCbor.encode m
   let hex = Hex.ToHexString encoded
   Assert.Equal("a2616102616201", hex)
 
 [<Fact>]
 let ``DAG-CBOR Sorting Length vs Bytes`` () =
-  let m = Map.ofList [ ("aa", box 1); ("b", box 2) ]
+  let m = Map.ofList [ "aa", box 1; "b", box 2 ]
   let encoded = DagCbor.encode m
   let hex = Hex.ToHexString encoded
   Assert.Equal("a261620262616101", hex)

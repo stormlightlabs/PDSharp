@@ -21,20 +21,37 @@ let getConfig () =
   let publicUrl = env "PDSHARP_PublicUrl" "http://localhost:5000"
   let dbPath = env "PDSHARP_DbPath" "pdsharp.db"
 
+  let disableWalAutoCheckpoint =
+    env "PDSHARP_SQLITE_DISABLE_WAL_AUTO_CHECKPOINT" "false" |> bool.Parse
+
+  let blobStoreConfig =
+    match env "PDSHARP_BLOBSTORE_TYPE" "disk" with
+    | "s3" ->
+      S3 {
+        Bucket = env "PDSHARP_S3_BUCKET" "pdsharp-blobs"
+        Region = env "PDSHARP_S3_REGION" "us-east-1"
+        AccessKey = Option.ofObj (Environment.GetEnvironmentVariable "PDSHARP_S3_ACCESS_KEY")
+        SecretKey = Option.ofObj (Environment.GetEnvironmentVariable "PDSHARP_S3_SECRET_KEY")
+        ServiceUrl = Option.ofObj (Environment.GetEnvironmentVariable "PDSHARP_S3_SERVICE_URL")
+        ForcePathStyle = env "PDSHARP_S3_FORCE_PATH_STYLE" "false" |> bool.Parse
+      }
+    | _ -> Disk "blobs"
+
   {
     PublicUrl = publicUrl
     DidHost = env "PDSHARP_DidHost" "did:web:localhost"
     JwtSecret = env "PDSHARP_JwtSecret" "development-secret-do-not-use-in-prod"
     SqliteConnectionString = $"Data Source={dbPath}"
-    BlobStore = Disk "blobs" // Default to disk for now
+    DisableWalAutoCheckpoint = disableWalAutoCheckpoint
+    BlobStore = blobStoreConfig
   }
 
 let config = getConfig ()
 
-SqliteStore.initialize config.SqliteConnectionString
+SqliteStore.initialize config
 
 module App =
-  let webApp =
+  let appRouter =
     choose [
       GET
       >=> choose [
@@ -65,9 +82,9 @@ module App =
       RequestErrors.NOT_FOUND "Not Found"
     ]
 
-  let configureApp (app : IApplicationBuilder) =
+  let webApp (app : IApplicationBuilder) =
     app.UseWebSockets() |> ignore
-    app.UseGiraffe webApp
+    app.UseGiraffe appRouter
 
   let configureServices (config : AppConfig) (services : IServiceCollection) =
     services.AddGiraffe() |> ignore
@@ -77,16 +94,16 @@ module App =
     let accountStore = new SqliteAccountStore(config.SqliteConnectionString)
     let repoStore = new SqliteRepoStore(config.SqliteConnectionString)
 
-    services.AddSingleton<IBlockStore>(blockStore) |> ignore
-    services.AddSingleton<IAccountStore>(accountStore) |> ignore
-    services.AddSingleton<IRepoStore>(repoStore) |> ignore
+    services.AddSingleton<IBlockStore> blockStore |> ignore
+    services.AddSingleton<IAccountStore> accountStore |> ignore
+    services.AddSingleton<IRepoStore> repoStore |> ignore
 
     let blobStore : IBlobStore =
       match config.BlobStore with
       | Disk path -> new DiskBlobStore(path) :> IBlobStore
       | S3 s3Config -> new S3BlobStore(s3Config) :> IBlobStore
 
-    services.AddSingleton<IBlobStore>(blobStore) |> ignore
+    services.AddSingleton<IBlobStore> blobStore |> ignore
     services.AddSingleton<FirehoseState>(new FirehoseState()) |> ignore
     services.AddSingleton<SigningKeyStore>(new SigningKeyStore()) |> ignore
 
@@ -95,7 +112,7 @@ module App =
     Host
       .CreateDefaultBuilder(args)
       .ConfigureWebHostDefaults(fun webHostBuilder ->
-        webHostBuilder.Configure(configureApp).ConfigureServices(configureServices config)
+        webHostBuilder.Configure(webApp).ConfigureServices(configureServices config)
         |> ignore)
       .Build()
       .Run()

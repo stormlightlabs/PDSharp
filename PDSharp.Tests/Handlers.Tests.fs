@@ -68,7 +68,7 @@ type MockJsonSerializer() =
     member _.Deserialize<'T>(json : string) = JsonSerializer.Deserialize<'T> json
 
     member _.Deserialize<'T>(bytes : byte[]) =
-      JsonSerializer.Deserialize<'T>(ReadOnlySpan(bytes))
+      JsonSerializer.Deserialize<'T>(ReadOnlySpan bytes)
 
     member _.DeserializeAsync<'T>(stream : Stream) = task { return! JsonSerializer.DeserializeAsync<'T>(stream) }
 
@@ -115,6 +115,7 @@ let ``Auth.createAccountHandler creates account successfully`` () = task {
     DidHost = "did:web:pds.example.com"
     JwtSecret = "secret"
     SqliteConnectionString = ""
+    DisableWalAutoCheckpoint = false
     BlobStore = Disk "blobs"
   }
 
@@ -130,9 +131,7 @@ let ``Auth.createAccountHandler creates account successfully`` () = task {
   let body = JsonSerializer.Serialize req
   let ctx = mockContext services body Map.empty
   let next : HttpFunc = fun _ -> Task.FromResult(None)
-
   let! result = PDSharp.Handlers.Auth.createAccountHandler next ctx
-
   Assert.Equal(200, ctx.Response.StatusCode)
 
   let store = accountStore :> IAccountStore
@@ -144,9 +143,7 @@ let ``Auth.createAccountHandler creates account successfully`` () = task {
 let ``Server.indexHandler returns HTML`` () = task {
   let ctx = new DefaultHttpContext()
   let next : HttpFunc = fun _ -> Task.FromResult(None)
-
   let! result = PDSharp.Handlers.Server.indexHandler next ctx
-
   Assert.Equal(200, ctx.Response.StatusCode)
   Assert.Equal("text/html", ctx.Response.ContentType)
 }
@@ -175,11 +172,8 @@ let ``Repo.createRecordHandler invalid collection returns error`` () = task {
   }
 
   let body = JsonSerializer.Serialize(req)
-
   let ctx = mockContext services body Map.empty
   let next : HttpFunc = fun _ -> Task.FromResult(None)
-
   let! result = PDSharp.Handlers.Repo.createRecordHandler next ctx
-
   Assert.Equal(400, ctx.Response.StatusCode)
 }

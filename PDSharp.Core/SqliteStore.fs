@@ -13,11 +13,15 @@ open PDSharp.Core.Config
 module SqliteStore =
 
   /// Initialize the database schema
-  let initialize (connectionString : string) =
-    use conn = new SqliteConnection(connectionString)
-    conn.Open()
+  let initialize (config : AppConfig) =
+    use conn = new SqliteConnection(config.SqliteConnectionString)
 
+    conn.Open()
     conn.Execute("PRAGMA journal_mode=WAL;") |> ignore
+
+    if config.DisableWalAutoCheckpoint then
+      conn.Execute("PRAGMA wal_autocheckpoint=0;") |> ignore
+
     // TODO: fast, slightly less safe. Keep default (FULL) for now.
     // conn.Execute("PRAGMA synchronous=NORMAL;") |> ignore
 

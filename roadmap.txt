@@ -61,9 +61,9 @@ DoD: Same inputs → same outputs for repo/sync surfaces
 --------------------------------------------------------------------------------
 Milestone J: Storage Backend Configuration
 --------------------------------------------------------------------------------
-- [ ] Configure SQLite WAL mode (PDS_SQLITE_DISABLE_WAL_AUTO_CHECKPOINT=true)
-- [ ] Implement S3-compatible blobstore adapter (optional via config)
-- [ ] Configure disk-based vs S3-based blob storage selection
+- [x] Configure SQLite WAL mode (PDS_SQLITE_DISABLE_WAL_AUTO_CHECKPOINT=true)
+- [x] Implement S3-compatible blobstore adapter (optional via config)
+- [x] Configure disk-based vs S3-based blob storage selection
 DoD: PDS runs with S3 blobs (if configured) and SQLite passes Litestream checks
 --------------------------------------------------------------------------------
 Milestone K: Backup Automation + Guardrails

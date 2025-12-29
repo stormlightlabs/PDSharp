@@ -8,6 +8,8 @@ module Config =
     JwtSecret : string
     /// Connection string for SQLite
     SqliteConnectionString : string
+    /// Disable SQLite WAL auto-checkpoint (for Litestream compatibility)
+    DisableWalAutoCheckpoint : bool
     /// Blob storage configuration
     BlobStore : BlobStoreConfig
   }
