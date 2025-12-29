@@ -21,6 +21,22 @@ let ``Can instantiate AppConfig`` () =
   Assert.Equal("did:web:example.com", config.DidHost)
 
 [<Fact>]
+let ``CID TryParse roundtrip`` () =
+  let hash = Crypto.sha256Str "test-data"
+  let cid = Cid.FromHash hash
+  let cidStr = cid.ToString()
+
+  match Cid.TryParse cidStr with
+  | Some parsed -> Assert.Equal<byte[]>(cid.Bytes, parsed.Bytes)
+  | None -> Assert.Fail "TryParse should succeed for valid CID"
+
+[<Fact>]
+let ``CID TryParse returns None for invalid`` () =
+  Assert.True(Cid.TryParse("invalid").IsNone)
+  Assert.True(Cid.TryParse("").IsNone)
+  Assert.True(Cid.TryParse("btooshort").IsNone)
+
+[<Fact>]
 let ``Can instantiate DescribeServerResponse`` () =
   let response = {
     availableUserDomains = [ "example.com" ]

@@ -1,5 +1,4 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
     <IsPackable>false</IsPackable>
@@ -12,6 +11,7 @@
     <Compile Include="BlockStore.Tests.fs" />
     <Compile Include="AtUri.Tests.fs" />
     <Compile Include="Repository.Tests.fs" />
+    <Compile Include="Car.Tests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
@@ -26,5 +26,4 @@
     <ProjectReference Include="..\PDSharp\PDSharp.fsproj" />
     <ProjectReference Include="..\PDSharp.Core\PDSharp.Core.fsproj" />
   </ItemGroup>
-
 </Project>

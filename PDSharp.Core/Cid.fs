@@ -43,6 +43,37 @@ module Base32Encoding =
 
       sb.ToString()
 
+  let FromString (s : string) : byte[] option =
+    if String.IsNullOrEmpty s then
+      Some [||]
+    else
+      try
+        let bits = s.Length * 5
+        let bytes = Array.zeroCreate<byte> (bits / 8)
+        let mutable buffer = 0
+        let mutable bitsInBuffer = 0
+        let mutable byteIndex = 0
+
+        for c in s do
+          let idx = alphabet.IndexOf(Char.ToLowerInvariant c)
+
+          if idx < 0 then
+            failwith "Invalid base32 character"
+
+          buffer <- buffer <<< 5 ||| idx
+          bitsInBuffer <- bitsInBuffer + 5
+
+          if bitsInBuffer >= 8 then
+            bitsInBuffer <- bitsInBuffer - 8
+
+            if byteIndex < bytes.Length then
+              bytes.[byteIndex] <- byte ((buffer >>> bitsInBuffer) &&& 0xFF)
+              byteIndex <- byteIndex + 1
+
+        Some bytes
+      with _ ->
+        None
+
 /// Basic CID implementation for AT Protocol (CIDv1 + dag-cbor + sha2-256)
 ///
 /// Constants for ATProto defaults:
@@ -65,6 +96,16 @@ type Cid =
     cidBytes.[3] <- 0x20uy
     Array.Copy(hash, 0, cidBytes, 4, 32)
     Cid cidBytes
+
+  static member TryParse(s : string) : Cid option =
+    if String.IsNullOrWhiteSpace s then
+      None
+    elif s.StartsWith("b") then
+      match Base32Encoding.FromString(s.Substring(1)) with
+      | Some bytes when bytes.Length = 36 -> Some(Cid bytes)
+      | _ -> None
+    else
+      None
 
   override this.ToString() =
     "b" + Base32Encoding.ToString(this.Bytes)

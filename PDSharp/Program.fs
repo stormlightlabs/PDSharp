@@ -328,6 +328,174 @@ module App =
             ctx
     }
 
+  /// sync.getRepo: Export entire repository as CAR file
+  let getRepoHandler : HttpHandler =
+    fun next ctx -> task {
+      let did = ctx.Request.Query.["did"].ToString()
+
+      if String.IsNullOrWhiteSpace(did) then
+        ctx.SetStatusCode 400
+
+        return!
+          json
+            {
+              error = "InvalidRequest"
+              message = "Missing required query parameter: did"
+            }
+            next
+            ctx
+      else
+        match Map.tryFind did repos with
+        | None ->
+          ctx.SetStatusCode 404
+
+          return!
+            json
+              {
+                error = "RepoNotFound"
+                message = $"Repository not found: {did}"
+              }
+              next
+              ctx
+        | Some repoData ->
+          match repoData.Head with
+          | None ->
+            ctx.SetStatusCode 404
+
+            return!
+              json
+                {
+                  error = "RepoNotFound"
+                  message = "Repository has no commits"
+                }
+                next
+                ctx
+          | Some headCid ->
+            let! allBlocks = (blockStore :> IBlockStore).GetAllCidsAndData()
+            let carBytes = Car.createCar [ headCid ] allBlocks
+            ctx.SetContentType "application/vnd.ipld.car"
+            ctx.SetStatusCode 200
+            return! ctx.WriteBytesAsync carBytes
+    }
+
+  /// sync.getBlocks: Fetch specific blocks by CID
+  let getBlocksHandler : HttpHandler =
+    fun next ctx -> task {
+      let did = ctx.Request.Query.["did"].ToString()
+      let cidsParam = ctx.Request.Query.["cids"].ToString()
+
+      if String.IsNullOrWhiteSpace did || String.IsNullOrWhiteSpace cidsParam then
+        ctx.SetStatusCode 400
+
+        return!
+          json
+            {
+              error = "InvalidRequest"
+              message = "Missing required query parameters: did, cids"
+            }
+            next
+            ctx
+      else
+        match Map.tryFind did repos with
+        | None ->
+          ctx.SetStatusCode 404
+
+          return!
+            json
+              {
+                error = "RepoNotFound"
+                message = $"Repository not found: {did}"
+              }
+              next
+              ctx
+        | Some _ ->
+          let cidStrs = cidsParam.Split(',') |> Array.map (fun s -> s.Trim())
+          let parsedCids = cidStrs |> Array.choose Cid.TryParse |> Array.toList
+          let! allBlocks = (blockStore :> IBlockStore).GetAllCidsAndData()
+
+          let filteredBlocks =
+            if parsedCids.IsEmpty then
+              allBlocks
+            else
+              allBlocks
+              |> List.filter (fun (c, _) -> parsedCids |> List.exists (fun pc -> pc.Bytes = c.Bytes))
+
+          let roots =
+            if filteredBlocks.Length > 0 then
+              [ fst filteredBlocks.[0] ]
+            else
+              []
+
+          let carBytes = Car.createCar roots filteredBlocks
+          ctx.SetContentType "application/vnd.ipld.car"
+          ctx.SetStatusCode 200
+          return! ctx.WriteBytesAsync carBytes
+    }
+
+  /// sync.getBlob: Fetch a blob by CID
+  let getBlobHandler : HttpHandler =
+    fun next ctx -> task {
+      let did = ctx.Request.Query.["did"].ToString()
+      let cidStr = ctx.Request.Query.["cid"].ToString()
+
+      if String.IsNullOrWhiteSpace(did) || String.IsNullOrWhiteSpace(cidStr) then
+        ctx.SetStatusCode 400
+
+        return!
+          json
+            {
+              error = "InvalidRequest"
+              message = "Missing required query parameters: did, cid"
+            }
+            next
+            ctx
+      else
+        match Map.tryFind did repos with
+        | None ->
+          ctx.SetStatusCode 404
+
+          return!
+            json
+              {
+                error = "RepoNotFound"
+                message = $"Repository not found: {did}"
+              }
+              next
+              ctx
+        | Some _ ->
+          match Cid.TryParse cidStr with
+          | None ->
+            ctx.SetStatusCode 400
+
+            return!
+              json
+                {
+                  error = "InvalidRequest"
+                  message = $"Invalid CID format: {cidStr}"
+                }
+                next
+                ctx
+          | Some cid ->
+            let! dataOpt = (blockStore :> IBlockStore).Get(cid)
+
+            match dataOpt with
+            | None ->
+              ctx.SetStatusCode 404
+
+              return!
+                json
+                  {
+                    error = "BlobNotFound"
+                    message = $"Blob not found: {cidStr}"
+                  }
+                  next
+                  ctx
+            | Some data ->
+              ctx.SetContentType "application/octet-stream"
+              ctx.SetStatusCode 200
+              return! ctx.WriteBytesAsync data
+    }
+
   let webApp =
     choose [
       GET
@@ -336,6 +504,9 @@ module App =
       POST >=> route "/xrpc/com.atproto.repo.createRecord" >=> createRecordHandler
       GET >=> route "/xrpc/com.atproto.repo.getRecord" >=> getRecordHandler
       POST >=> route "/xrpc/com.atproto.repo.putRecord" >=> putRecordHandler
+      GET >=> route "/xrpc/com.atproto.sync.getRepo" >=> getRepoHandler
+      GET >=> route "/xrpc/com.atproto.sync.getBlocks" >=> getBlocksHandler
+      GET >=> route "/xrpc/com.atproto.sync.getBlob" >=> getBlobHandler
       route "/" >=> text "PDSharp PDS is running."
       RequestErrors.NOT_FOUND "Not Found"
     ]

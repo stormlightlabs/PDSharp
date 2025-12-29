@@ -37,8 +37,8 @@ DoD: Write and read records by path/AT-URI
 --------------------------------------------------------------------------------
 Milestone F: CAR Export + Sync Endpoints
 --------------------------------------------------------------------------------
-- CARv1 writer (roots = commit CID, blocks stream)
-- Implement: sync.getRepo, sync.getBlocks, sync.getBlob
+- [x] CARv1 writer (roots = commit CID, blocks stream)
+- [x] Implement: sync.getRepo, sync.getBlocks, sync.getBlob
 DoD: External services can fetch repo snapshot + blocks
 --------------------------------------------------------------------------------
 Milestone G: subscribeRepos Firehose
@@ -119,7 +119,7 @@ QUICK CHECKLIST
 [x] DAG-CBOR + CID generation correct
 [x] MST producing deterministic root CIDs
 [x] putRecord + blockstore operational
-[ ] CAR export + sync endpoints
+[x] CAR export + sync endpoints
 [ ] subscribeRepos firehose
 [ ] Authentication (createAccount, createSession)
 [ ] Lexicon validation
