@@ -9,6 +9,9 @@
   <ItemGroup>
     <Compile Include="Tests.fs" />
     <Compile Include="Mst.Tests.fs" />
+    <Compile Include="BlockStore.Tests.fs" />
+    <Compile Include="AtUri.Tests.fs" />
+    <Compile Include="Repository.Tests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

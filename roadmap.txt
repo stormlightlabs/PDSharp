@@ -30,9 +30,9 @@ DoD: Insert/update/delete yields reproducible root CID
 --------------------------------------------------------------------------------
 Milestone E: Commit + BlockStore + putRecord
 --------------------------------------------------------------------------------
-- BlockStore: cid → bytes, indexed by DID/rev/head
-- Commit signing: UnsignedCommit → DAG-CBOR → sha256 → ECDSA sign
-- Implement com.atproto.repo.putRecord/createRecord
+- [x] BlockStore: cid → bytes, indexed by DID/rev/head
+- [x] Commit signing: UnsignedCommit → DAG-CBOR → sha256 → ECDSA sign
+- [x] Implement com.atproto.repo.putRecord/createRecord
 DoD: Write and read records by path/AT-URI
 --------------------------------------------------------------------------------
 Milestone F: CAR Export + Sync Endpoints
@@ -114,11 +114,11 @@ DoD: Update smoothly, maintain stable federation
 ================================================================================
 QUICK CHECKLIST
 ================================================================================
-[ ] describeServer endpoint working
-[ ] Crypto primitives (sha256, ECDSA p256/k256, low-S)
-[ ] DAG-CBOR + CID generation correct
+[x] describeServer endpoint working
+[x] Crypto primitives (sha256, ECDSA p256/k256, low-S)
+[x] DAG-CBOR + CID generation correct
 [x] MST producing deterministic root CIDs
-[ ] putRecord + blockstore operational
+[x] putRecord + blockstore operational
 [ ] CAR export + sync endpoints
 [ ] subscribeRepos firehose
 [ ] Authentication (createAccount, createSession)
