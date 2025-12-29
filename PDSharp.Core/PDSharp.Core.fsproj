@@ -5,13 +5,16 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Compile Include="Config.fs"/>
-        <Compile Include="Crypto.fs"/>
-        <Compile Include="DidResolver.fs"/>
-        <Compile Include="Library.fs"/>
+        <Compile Include="Config.fs" />
+        <Compile Include="Cid.fs" />
+        <Compile Include="DagCbor.fs" />
+        <Compile Include="Crypto.fs" />
+        <Compile Include="DidResolver.fs" />
+        <Compile Include="Library.fs" />
     </ItemGroup>
 
     <ItemGroup>
       <PackageReference Include="BouncyCastle.Cryptography" Version="2.6.2" />
+      <PackageReference Include="System.Formats.Cbor" Version="10.0.1" />
     </ItemGroup>
 </Project>

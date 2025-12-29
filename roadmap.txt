@@ -17,8 +17,8 @@ DoD: Sign and verify atproto commit hash with low-S
 --------------------------------------------------------------------------------
 Milestone C: DAG-CBOR + CID
 --------------------------------------------------------------------------------
-- Canonical DAG-CBOR encode/decode with IPLD link tagging
-- CID creation/parsing (multicodec dag-cbor, sha2-256)
+- [x] Canonical DAG-CBOR encode/decode with IPLD link tagging
+- [x] CID creation/parsing (multicodec dag-cbor, sha2-256)
 DoD: Record JSON → stable DAG-CBOR bytes → deterministic CID
 --------------------------------------------------------------------------------
 Milestone D: MST Implementation
@@ -70,7 +70,7 @@ DoD: Clear plan for PDS location, handle, and DID resolution
 Milestone K: DNS + TLS + Reverse Proxy
 --------------------------------------------------------------------------------
 - DNS A/AAAA records for PDS hostname
-- TLS certs (ACME) via Caddy/Nginx/Traefik
+- TLS certs (ACME) via Caddy
 DoD: https://<pds-hostname> responds with valid cert
 --------------------------------------------------------------------------------
 Milestone L: Deploy PDSharp

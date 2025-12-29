@@ -1,17 +1,15 @@
 ﻿module Tests
 
-open System
 open Xunit
 open PDSharp.Core.Models
 open PDSharp.Core.Config
 open PDSharp.Core.Crypto
+open PDSharp.Core
 open PDSharp.Core.DidResolver
 open Org.BouncyCastle.Utilities.Encoders
 open System.Text
+open System.Text.Json
 open Org.BouncyCastle.Math
-
-[<Fact>]
-let ``My test`` () = Assert.True(true)
 
 [<Fact>]
 let ``Can instantiate AppConfig`` () =
@@ -91,11 +89,33 @@ let ``DidDocument JSON deserialization`` () =
     }"""
 
   let doc =
-    System.Text.Json.JsonSerializer.Deserialize<DidDocument>(
-      json,
-      Json.JsonSerializerOptions(PropertyNameCaseInsensitive = true)
-    )
+    JsonSerializer.Deserialize<DidDocument>(json, JsonSerializerOptions(PropertyNameCaseInsensitive = true))
 
   Assert.Equal("did:web:example.com", doc.Id)
   Assert.Single doc.VerificationMethod |> ignore
   Assert.Equal("Multikey", doc.VerificationMethod.Head.Type)
+
+[<Fact>]
+let ``CID Generation from Hash`` () =
+  let hash =
+    Hex.Decode("b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9")
+
+  let cid = Cid.FromHash hash
+  Assert.Equal<byte>(0x01uy, cid.Bytes.[0])
+  Assert.Equal<byte>(0x71uy, cid.Bytes.[1])
+  Assert.Equal<byte>(0x12uy, cid.Bytes.[2])
+  Assert.Equal<byte>(0x20uy, cid.Bytes.[3])
+
+[<Fact>]
+let ``DAG-CBOR Canonical Sorting`` () =
+  let m = Map.ofList [ ("b", box 1); ("a", box 2) ]
+  let encoded = DagCbor.encode m
+  let hex = Hex.ToHexString encoded
+  Assert.Equal("a2616102616201", hex)
+
+[<Fact>]
+let ``DAG-CBOR Sorting Length vs Bytes`` () =
+  let m = Map.ofList [ ("aa", box 1); ("b", box 2) ]
+  let encoded = DagCbor.encode m
+  let hex = Hex.ToHexString encoded
+  Assert.Equal("a261620262616101", hex)
