@@ -59,80 +59,72 @@ Milestone I: Lexicon Validation + Conformance
 - [x] Conformance testing: diff CIDs/CARs/signatures vs reference PDS
 DoD: Same inputs → same outputs for repo/sync surfaces
 --------------------------------------------------------------------------------
-Milestone J: Persistence + Backups
+Milestone J: Storage Backend Configuration
 --------------------------------------------------------------------------------
-Deliverables:
-  - BackupOps module in Core (scheduler unit / cron / scripts, plus Litestream config)
-Backups (SQLite)
-    [ ] Set PDS_SQLITE_DISABLE_WAL_AUTO_CHECKPOINT=true (Litestream-friendly)
-    [ ] Run a scheduled backup/replication job that:
-        - finds recently updated DBs
-        - backs up /pds/actors/* and PDS-wide DBs
-        - runs on SIGTERM during deploys (avoid missing last writes)
-Backups (Blobs)
-    [ ] Configurable Options (app settings):
-        (A) Disk blobs: include /pds/blocks in backups
-        (B) S3-compatible blobstore: rely on object-store durability
-Guardrails
-    [ ] Uptime check: https://<pds>/xrpc/_health
-    [ ] Alert if “latest backup” is older than N minutes.
-    [ ] Alert on disk pressure for /pds.
+- [ ] Configure SQLite WAL mode (PDS_SQLITE_DISABLE_WAL_AUTO_CHECKPOINT=true)
+- [ ] Implement S3-compatible blobstore adapter (optional via config)
+- [ ] Configure disk-based vs S3-based blob storage selection
+DoD: PDS runs with S3 blobs (if configured) and SQLite passes Litestream checks
+--------------------------------------------------------------------------------
+Milestone K: Backup Automation + Guardrails
+--------------------------------------------------------------------------------
+- [ ] Implement BackupOps module (scheduler/cron logic)
+- [ ] Automated backup jobs:
+    - [ ] Databases (Litestream or raw copy) + /pds/actors backup
+    - [ ] Local disk blobs (if applicable)
+- [ ] Guardrails & Monitoring:
+    - [ ] Uptime check endpoint: /xrpc/_health with JSON status
+    - [ ] Alerts: "Latest backup" too old, Disk pressure > 90%
+    - [ ] Log retention policies
 DoD:
-  - You can restore onto a fresh host and pass the P3 verification checklist.
-  - Backups run automatically and are observable (“last successful backup”).
-  - Backup set is explicitly documented (DBs + blobs decision).
+  - Backups run automatically and report status
+  - Health checks indicate system state
+  - Restore drill: Restore backups onto a fresh host passes verification
+  - Backup set is explicitly documented
 ================================================================================
 PHASE 2: DEPLOYMENT (Self-Host)
 ================================================================================
-Milestone J: Topology + Domain Planning
+Milestone L: Topology + Domain Planning
 --------------------------------------------------------------------------------
 - Choose PDS hostname (pds.example.com) vs handle domain (example.com)
 - Obtain domain, DNS access, VPS with static IP, reverse proxy
 DoD: Clear plan for PDS location, handle, and DID resolution
 --------------------------------------------------------------------------------
-Milestone K: DNS + TLS + Reverse Proxy
+Milestone M: DNS + TLS + Reverse Proxy
 --------------------------------------------------------------------------------
 - DNS A/AAAA records for PDS hostname
 - TLS certs (ACME) via Caddy
 DoD: https://<pds-hostname> responds with valid cert
 --------------------------------------------------------------------------------
-Milestone L: Deploy PDSharp
+Milestone N: Deploy PDSharp
 --------------------------------------------------------------------------------
 - Deploy built PDS with persistence (SQLite/Postgres + blob storage)
 - Verify /xrpc/com.atproto.server.describeServer
 DoD: describeServer returns capabilities payload
 --------------------------------------------------------------------------------
-Milestone M: Account Creation
+Milestone O: Account Creation
 --------------------------------------------------------------------------------
 - Create account using admin tooling
 - Verify authentication: createSession
 DoD: Obtain session and perform authenticated write
 --------------------------------------------------------------------------------
-Milestone N: Smoke Test Repo + Blobs
+Milestone P: Smoke Test Repo + Blobs
 --------------------------------------------------------------------------------
 - Write record via putRecord
 - Upload blob, verify retrieval via sync.getBlob
 DoD: Posts appear in clients, media loads reliably
 --------------------------------------------------------------------------------
-Milestone O: Account Migration
+Milestone Q: Account Migration
 --------------------------------------------------------------------------------
 - Export/import from bsky.social
 - Update DID service endpoint
 - Verify handle/DID resolution
 DoD: Handle unchanged, DID points to your PDS
 --------------------------------------------------------------------------------
-Milestone P: Reliability
---------------------------------------------------------------------------------
-- Backups: repo storage + database + blobs
-- Restore drill on fresh instance
-- Monitoring: uptime checks for describeServer + getBlob
-DoD: Restore from backup passes smoke tests
---------------------------------------------------------------------------------
-Milestone Q: Updates + Security
+Milestone R: Updates + Security
 --------------------------------------------------------------------------------
 - Update cadence with rollback plan
 - Rate limits and access controls at proxy
-- Log retention and disk growth alerts
 DoD: Update smoothly, maintain stable federation
 ================================================================================
 QUICK CHECKLIST
