@@ -10,6 +10,7 @@ open PDSharp.Core.BlockStore
 open PDSharp.Core.SqliteStore
 open PDSharp.Core.BlobStore
 open PDSharp.Core.Config
+open PDSharp.Core.Health
 open PDSharp.Handlers
 
 let getConfig () =
@@ -57,6 +58,7 @@ module App =
       >=> choose [
         route "/" >=> Server.indexHandler
         route "/xrpc/com.atproto.server.describeServer" >=> Server.describeServerHandler
+        route "/xrpc/_health" >=> HealthHandler.healthHandler
       ]
       POST
       >=> route "/xrpc/com.atproto.server.createAccount"
@@ -106,6 +108,7 @@ module App =
     services.AddSingleton<IBlobStore> blobStore |> ignore
     services.AddSingleton<FirehoseState>(new FirehoseState()) |> ignore
     services.AddSingleton<SigningKeyStore>(new SigningKeyStore()) |> ignore
+    services.AddSingleton<HealthState>(new HealthState()) |> ignore
 
   [<EntryPoint>]
   let main args =

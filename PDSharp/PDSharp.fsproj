@@ -11,6 +11,7 @@
     <Compile Include="Handlers/Auth.fs" />
     <Compile Include="Handlers/Repo.fs" />
     <Compile Include="Handlers/Sync.fs" />
+    <Compile Include="Handlers/Health.fs" />
     <Compile Include="Program.fs" />
     </ItemGroup>
 

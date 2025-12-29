@@ -20,6 +20,7 @@
         <Compile Include="Firehose.fs" />
         <Compile Include="DidResolver.fs" />
         <Compile Include="Lexicon.fs" />
+        <Compile Include="Health.fs" />
         <Compile Include="Library.fs" />
     </ItemGroup>
 

@@ -83,6 +83,24 @@ module SqliteStore =
 
   type BlockRow = { cid : string; data : byte[] }
 
+  /// DTO for account rows with nullable email
+  [<CLIMutable>]
+  type AccountRow = {
+    did : string
+    handle : string
+    password_hash : string
+    email : string // Nullable in DB, null becomes null here
+    created_at : string
+  }
+
+  let private toAccount (row : AccountRow) : Account = {
+    Did = row.did
+    Handle = row.handle
+    PasswordHash = row.password_hash
+    Email = if isNull row.email then None else Some row.email
+    CreatedAt = DateTimeOffset.Parse row.created_at
+  }
+
   type IRepoStore =
     abstract member GetRepo : string -> Async<RepoRow option>
     abstract member SaveRepo : RepoRow -> Async<unit>
@@ -146,13 +164,22 @@ module SqliteStore =
         use conn = new SqliteConnection(connectionString)
 
         try
+          let emailValue = account.Email |> Option.toObj
+          let createdAtStr = account.CreatedAt.ToString "o"
+
           let! _ =
             conn.ExecuteAsync(
               """
                 INSERT INTO accounts (did, handle, password_hash, email, created_at)
                 VALUES (@Did, @Handle, @PasswordHash, @Email, @CreatedAt)
             """,
-              account
+              {|
+                Did = account.Did
+                Handle = account.Handle
+                PasswordHash = account.PasswordHash
+                Email = emailValue
+                CreatedAt = createdAtStr
+              |}
             )
             |> Async.AwaitTask
 
@@ -167,7 +194,7 @@ module SqliteStore =
         use conn = new SqliteConnection(connectionString)
 
         let! result =
-          conn.QuerySingleOrDefaultAsync<Account>(
+          conn.QuerySingleOrDefaultAsync<AccountRow>(
             "SELECT * FROM accounts WHERE handle = @handle",
             {| handle = handle |}
           )
@@ -176,20 +203,20 @@ module SqliteStore =
         if isNull (box result) then
           return None
         else
-          return Some result
+          return Some(toAccount result)
       }
 
       member _.GetAccountByDid(did : string) = async {
         use conn = new SqliteConnection(connectionString)
 
         let! result =
-          conn.QuerySingleOrDefaultAsync<Account>("SELECT * FROM accounts WHERE did = @did", {| did = did |})
+          conn.QuerySingleOrDefaultAsync<AccountRow>("SELECT * FROM accounts WHERE did = @did", {| did = did |})
           |> Async.AwaitTask
 
         if isNull (box result) then
           return None
         else
-          return Some result
+          return Some(toAccount result)
       }
 
   type SqliteRepoStore(connectionString : string) =

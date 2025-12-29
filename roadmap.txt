@@ -73,8 +73,8 @@ Milestone K: Backup Automation + Guardrails
     - [ ] Databases (Litestream or raw copy) + /pds/actors backup
     - [ ] Local disk blobs (if applicable)
 - [ ] Guardrails & Monitoring:
-    - [ ] Uptime check endpoint: /xrpc/_health with JSON status
-    - [ ] Alerts: "Latest backup" too old, Disk pressure > 90%
+    - [x] Uptime check endpoint: /xrpc/_health with JSON status
+    - [x] Alerts: "Latest backup" too old, Disk pressure > 90%
     - [ ] Log retention policies
 DoD:
   - Backups run automatically and report status
@@ -137,12 +137,12 @@ QUICK CHECKLIST
 [x] CAR export + sync endpoints
 [x] subscribeRepos firehose
 [x] Authentication (createAccount, createSession)
-[ ] Lexicon validation
+[x] Lexicon validation
 [ ] Domain + TLS configured
 [ ] PDS deployed and reachable
 [ ] Account created, session works
 [ ] Writes + blobs verified
-[ ] Backups + monitoring in place
+[/] Backups + monitoring in place (health endpoint done, backup automation pending)
 ================================================================================
 REFERENCES
 ================================================================================
