@@ -16,6 +16,7 @@ open PDSharp.Core.BlockStore
 open PDSharp.Core.Repository
 open PDSharp.Core.Mst
 open PDSharp.Core.Crypto
+open PDSharp.Core.Firehose
 
 module App =
   /// Repo state per DID: MST root, collections, current rev, head commit CID
@@ -38,6 +39,29 @@ module App =
   let mutable repos : Map<string, RepoData> = Map.empty
   let blockStore = MemoryBlockStore()
   let mutable signingKeys : Map<string, EcKeyPair> = Map.empty
+
+  // Firehose subscriber management
+  open System.Net.WebSockets
+  open System.Collections.Concurrent
+
+  /// Connected WebSocket subscribers
+  let subscribers = ConcurrentDictionary<Guid, WebSocket>()
+
+  /// Broadcast a commit event to all connected subscribers
+  let broadcastEvent (event : CommitEvent) =
+    let eventBytes = encodeEvent event
+    let segment = ArraySegment<byte>(eventBytes)
+
+    for kvp in subscribers do
+      let ws = kvp.Value
+
+      if ws.State = WebSocketState.Open then
+        try
+          ws.SendAsync(segment, WebSocketMessageType.Binary, true, Threading.CancellationToken.None)
+          |> Async.AwaitTask
+          |> Async.RunSynchronously
+        with _ ->
+          subscribers.TryRemove(kvp.Key) |> ignore
 
   let getOrCreateKey (did : string) =
     match Map.tryFind did signingKeys with
@@ -155,6 +179,11 @@ module App =
       }
 
       repos <- Map.add did updatedRepo repos
+
+      let! allBlocks = (blockStore :> IBlockStore).GetAllCidsAndData()
+      let carBytes = Car.createCar [ commitCid ] allBlocks
+      let event = createCommitEvent did newRev commitCid carBytes
+      broadcastEvent event
 
       let uri = $"at://{did}/{request.collection}/{rkey}"
       ctx.SetStatusCode 200
@@ -303,6 +332,11 @@ module App =
         }
 
         repos <- Map.add did updatedRepo repos
+
+        let! allBlocks = (blockStore :> IBlockStore).GetAllCidsAndData()
+        let carBytes = Car.createCar [ commitCid ] allBlocks
+        let event = createCommitEvent did newRev commitCid carBytes
+        broadcastEvent event
 
         ctx.SetStatusCode 200
 
@@ -496,6 +530,55 @@ module App =
               return! ctx.WriteBytesAsync data
     }
 
+  /// subscribeRepos: WebSocket firehose endpoint
+  let subscribeReposHandler : HttpHandler =
+    fun next ctx -> task {
+      if ctx.WebSockets.IsWebSocketRequest then
+        let cursor =
+          match ctx.Request.Query.TryGetValue("cursor") with
+          | true, v when not (String.IsNullOrWhiteSpace(v.ToString())) ->
+            Int64.TryParse(v.ToString())
+            |> function
+              | true, n -> Some n
+              | _ -> None
+          | _ -> None
+
+        let! webSocket = ctx.WebSockets.AcceptWebSocketAsync()
+        let id = Guid.NewGuid()
+        subscribers.TryAdd(id, webSocket) |> ignore
+
+        let buffer = Array.zeroCreate<byte> 1024
+
+        try
+          let mutable loop = true
+
+          while loop && webSocket.State = WebSocketState.Open do
+            let! result = webSocket.ReceiveAsync(ArraySegment(buffer), Threading.CancellationToken.None)
+
+            if result.MessageType = WebSocketMessageType.Close then
+              loop <- false
+        finally
+          subscribers.TryRemove(id) |> ignore
+
+          if webSocket.State = WebSocketState.Open then
+            webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closed", Threading.CancellationToken.None)
+            |> Async.AwaitTask
+            |> Async.RunSynchronously
+
+        return Some ctx
+      else
+        ctx.SetStatusCode 400
+
+        return!
+          json
+            {
+              error = "InvalidRequest"
+              message = "WebSocket upgrade required"
+            }
+            next
+            ctx
+    }
+
   let webApp =
     choose [
       GET
@@ -507,11 +590,14 @@ module App =
       GET >=> route "/xrpc/com.atproto.sync.getRepo" >=> getRepoHandler
       GET >=> route "/xrpc/com.atproto.sync.getBlocks" >=> getBlocksHandler
       GET >=> route "/xrpc/com.atproto.sync.getBlob" >=> getBlobHandler
+      GET >=> route "/xrpc/com.atproto.sync.subscribeRepos" >=> subscribeReposHandler
       route "/" >=> text "PDSharp PDS is running."
       RequestErrors.NOT_FOUND "Not Found"
     ]
 
-  let configureApp (app : IApplicationBuilder) = app.UseGiraffe webApp
+  let configureApp (app : IApplicationBuilder) =
+    app.UseWebSockets() |> ignore
+    app.UseGiraffe webApp
 
   let configureServices (config : AppConfig) (services : IServiceCollection) =
     services.AddGiraffe() |> ignore

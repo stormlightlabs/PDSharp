@@ -12,6 +12,7 @@
     <Compile Include="AtUri.Tests.fs" />
     <Compile Include="Repository.Tests.fs" />
     <Compile Include="Car.Tests.fs" />
+    <Compile Include="Firehose.Tests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

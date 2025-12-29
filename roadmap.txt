@@ -43,8 +43,8 @@ DoD: External services can fetch repo snapshot + blocks
 --------------------------------------------------------------------------------
 Milestone G: subscribeRepos Firehose
 --------------------------------------------------------------------------------
-- Monotonic sequence number + commit event generation
-- WebSocket streaming for subscribeRepos
+- [x] Monotonic sequence number + commit event generation
+- [x] WebSocket streaming for subscribeRepos
 DoD: Relay/client receives commit events after writes
 --------------------------------------------------------------------------------
 Milestone H: Account + Sessions
@@ -120,7 +120,7 @@ QUICK CHECKLIST
 [x] MST producing deterministic root CIDs
 [x] putRecord + blockstore operational
 [x] CAR export + sync endpoints
-[ ] subscribeRepos firehose
+[x] subscribeRepos firehose
 [ ] Authentication (createAccount, createSession)
 [ ] Lexicon validation
 [ ] Domain + TLS configured
