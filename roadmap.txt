@@ -11,8 +11,8 @@ DoD: describeServer responds with stable JSON
 --------------------------------------------------------------------------------
 Milestone B: Identity + Crypto Primitives
 --------------------------------------------------------------------------------
-- DID document fetch/parse for signing key and PDS endpoint
-- SHA-256 hashing, ECDSA sign/verify (p256 + k256), low-S enforcement
+- [x] DID document fetch/parse for signing key and PDS endpoint
+- [x] SHA-256 hashing, ECDSA sign/verify (p256 + k256), low-S enforcement
 DoD: Sign and verify atproto commit hash with low-S
 --------------------------------------------------------------------------------
 Milestone C: DAG-CBOR + CID
